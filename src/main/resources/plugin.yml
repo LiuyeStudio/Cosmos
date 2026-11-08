@@ -1,0 +1,51 @@
+# ============================================================================
+#  Cosmos - plugin descriptor
+#  Paper 26.3 / Folia 26.3, api-version matches the server's current API version.
+#  If you run an older server (1.21.x - 26.2), change api-version to '1.21'.
+# ============================================================================
+name: Cosmos
+version: '${project.version}'
+main: studio.liuye.cosmos.CosmosPlugin
+
+# Folia 26.3 reports "26.3" as its current API version (apiVersioning.json).
+api-version: '26.3'
+
+# Required: without this flag Folia refuses to load the plugin.
+folia-supported: true
+
+# Optional ordering hint only (no hard dependency): world managers enable first, load
+# their worlds, and Cosmos then adopts the existing 'cosmos' world instead of creating it.
+# Works the same without these plugins installed.
+softdepend: [ Multiverse-Core, MyWorlds, PhantomWorlds ]
+
+description: Cosmos dimension - deterministic planet world generation, Y-axis travel between the overworld and the Cosmos dimension, floating items.
+authors: [ liuye ]
+website: https://studio.liuye
+
+commands:
+  cosmos:
+    description: Cosmos main command (reload / tp / info)
+    usage: |
+      /cosmos reload              - reload config.yml, planets.yml and message.yml
+      /cosmos tp <player>         - teleport a player to the Cosmos dimension
+      /cosmos info                - show scale, thresholds and world status
+    aliases: [ cos ]
+    permission-message: You do not have permission to use /cosmos.
+
+permissions:
+  cosmos.admin:
+    description: Full Cosmos administration permission.
+    default: op
+    children:
+      cosmos.reload: true
+      cosmos.tp: true
+      cosmos.info: true
+  cosmos.reload:
+    description: Allows reloading the Cosmos configuration (/cosmos reload).
+    default: op
+  cosmos.tp:
+    description: Allows teleporting players into the Cosmos dimension (/cosmos tp).
+    default: op
+  cosmos.info:
+    description: Allows reading the Cosmos status (/cosmos info).
+    default: true

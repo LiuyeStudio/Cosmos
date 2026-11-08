@@ -1,0 +1,152 @@
+# ============================================================================
+#  Cosmos - 宇宙维度配置 / Cosmos dimension configuration
+#  ---------------------------------------------------------------------------
+#  相关文件（都在同一目录，改完执行 /cosmos reload 即可，不需要重启）：
+#    config.yml  - 世界、缩放、传送高度、悬浮等行为
+#    planets.yml - 星球列表（只使用廉价方块）
+#    message.yml - 所有发给玩家的消息
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 坐标缩放 / coordinate scale
+#   Cosmos 水平方向 1 格 = 主世界 scale 格。
+#   主世界 -> Cosmos :  cosmosX = mainX / scale , cosmosZ = mainZ / scale
+#   Cosmos -> 主世界 :  mainX   = cosmosX * scale , mainZ = cosmosZ * scale
+#   Y 轴不缩放，由下面两个 world/cosmos 各自的传送高度与到达偏移决定。
+# ----------------------------------------------------------------------------
+scale: 64
+
+# ----------------------------------------------------------------------------
+# 主世界名称。留空 ("") 表示使用服务器加载的第一个世界（通常就是主世界）。
+# 注意：主世界 -> Cosmos 的上升触发只在这个世界生效。
+# ----------------------------------------------------------------------------
+main-world: "world"
+
+# ----------------------------------------------------------------------------
+# 双向 Y 轴传送 / shared teleport height
+#   两个世界各有自己的传送高度：
+#     主世界 Y >= teleport-y-world   -> 传送到 Cosmos，落在 Y = teleport-y-cosmos + offset
+#     Cosmos Y <= teleport-y-cosmos  -> 传回主世界，落在 Y = teleport-y-world - offset
+#   例（world=150, cosmos=150, offset=10）：主世界 (100,150,200) -> Cosmos (1.5625,160,3.125)
+#                                          再降到 150 以下 -> 主世界 (100,140,200)
+#   X/Y/Z 全部严格等于换算结果，不做落点搜索、不裁剪到建筑范围
+#   （实体可以位于建筑上限之上，和 /tp 一致）。
+#
+#   不使用数据包时，世界建筑范围最大是 NORMAL 的 -64..319（THE_END 只有 0..255）。
+#   星球只生成在 teleport-y-cosmos 以上，所以这个值必须给星球留出空间：
+#   取 150 时到达 160、星球可放 170..319；取 300 时只剩 300..319 共 19 格，放不下有意义的星球。
+# ----------------------------------------------------------------------------
+# 主世界的传送高度（Y >= 该值去 Cosmos）
+# ----------------------------------------------------------------------------
+teleport-y-world: 400
+# Cosmos 世界自己的传送高度（Y <= 该值回主世界）
+teleport-y-cosmos: 0
+# 到达高度偏移：去 Cosmos 落在 teleport-y-cosmos + offset，回主世界落在 teleport-y-world - offset
+teleport-y-offset: 10
+
+# 单向冷却（毫秒）。传送成功后写入，防止在阈值附近来回循环。
+teleport-cooldown-ms: 3000
+# 传送后用原版 portal cooldown 再锁一次（tick，20 tick = 1 秒；0 = 不设置）
+portal-cooldown-ticks: 100
+
+# 每个玩家的低频 Y 轴巡检周期（tick）。PlayerMoveEvent 仍是主检测路径，
+# 这里只是兜底（例如插件传送、载具位移等极端情况）。0 = 关闭巡检。
+y-check-interval-ticks: 10
+
+# 传送前预加载目标点周围的区块半径（0 = 只加载落点那一个区块，最多 8）。
+# 跨维度时客户端要为落点周围的区块建网格；先预加载几圈再传送，落地后不会
+# 「边落边等区块」。2 = 5x5 共 25 个区块，通常已经够用。
+teleport-preload-radius: 2
+
+# Cosmos 世界看门狗（tick）。Multiverse / MyWorlds / PhantomWorlds 等世界管理插件
+# 可能在 Cosmos 启用之后才加载、卸载或重载 'cosmos' 世界；看门狗定期比对一次世界引用
+# 以重新接管（只观察，绝不创建或卸载世界）。0 = 关闭。
+world-check-interval-ticks: 100
+
+# ----------------------------------------------------------------------------
+# Cosmos 世界
+# ----------------------------------------------------------------------------
+cosmos-world-name: cosmos
+# THE_END / NORMAL / NETHER
+#   云是「维度类型」的属性，插件无法单独开关：
+#     NORMAL（overworld）  -> 有云（cloud_height 192），建筑范围 -64..319
+#     THE_END              -> 没有云（End 天空），建筑范围 0..255
+#     NETHER               -> 没有云，建筑范围 0..255
+#   想要「Cosmos 没有云」就把这里设为 THE_END；想保留 384 高度就用 NORMAL（会有云）。
+#   注意：环境在世界创建时固定，改这里只对「新建的」Cosmos 世界生效。
+cosmos-world-environment: THE_END
+# 生成器使用的生物群系（影响天空颜色、天气与生物生成表）
+cosmos-biome: THE_END
+cosmos-world-seed: 1337
+# 世界不存在时是否自动创建
+cosmos-world-auto-create: true
+# 世界边界是否与主世界同步：中心与尺寸都按 1:scale 换算
+#   （主世界边界 60000 -> Cosmos 边界 60000/scale，坐标语义一致）
+cosmos-world-border-sync: true
+# Cosmos 世界的视距（区块）。0 = 沿用服务端全局 view-distance，建议 6~8。
+#   跨维度时客户端要把整个视距内的区块建一遍网格，星球又是实心大球，
+#   视距 10 以上切世界那一下会明显卡；Cosmos 是虚空 + 星球，8 已经够看。
+#   只影响 Cosmos 世界，不改全局设置。
+cosmos-view-distance: 0
+# 单独限制「下发给客户端」的视距（区块）。0 = 跟随 cosmos-view-distance。
+#   比模拟视距小会在远处提前起雾，但能进一步减少切世界时客户端的建网格量。
+cosmos-send-view-distance: 8
+
+# 世界规则（camelCase 或 UPPER_SNAKE 均可，未知名称会被忽略并写入日志）
+# 26.3 的规则名：spawn_mobs / advance_time / advance_weather / respawn_radius / fall_damage ...
+cosmos-world-gamerules:
+  spawn_mobs: false
+  advance_time: true
+  advance_weather: false
+  respawn_radius: 2
+  fall_damage: true
+
+# ----------------------------------------------------------------------------
+# 掉落物悬浮 / floating item entities
+#   仅作用于 Cosmos 维度。重力修改一律通过 EntityScheduler 在实体所属区域线程完成。
+# ----------------------------------------------------------------------------
+item-float-enabled: true
+# 经验球是否同样悬浮
+float-experience-orb: false
+# 是否同时把速度清零（关闭后掉落物会保留抛出时的初速度，但仍不下落）
+float-freeze-velocity: true
+# 是否让悬浮掉落物永不过期（会略微增加实体压力，默认关闭）
+float-unlimited-lifetime: false
+# 已存在掉落物的巡检周期（tick，0 = 关闭）。Folia 下按玩家区域扫描，范围见下。
+float-sweep-interval-ticks: 200
+float-sweep-radius: 16
+
+# ----------------------------------------------------------------------------
+# 玩家悬浮 / player float
+#   开启后，位于 Cosmos 的玩家下落速度会被夹到 player-float-fall-speed，
+#   表现为缓慢下沉而不是自由落体（不授予飞行，也不是创造模式飞行）。
+#   穿鞘翅的玩家整个跳过（见 player-float-skip-elytra），交给原版滑翔。
+# ----------------------------------------------------------------------------
+player-float-enabled: true
+# 胸口穿鞘翅的玩家是否跳过悬浮巡检。
+#   悬浮每 2 tick 下发一次速度包，会打断鞘翅「起跳→滑翔」那一下；
+#   设为 true 后穿鞘翅者在 Cosmos 里完全是原版滑翔手感（推荐）。
+player-float-skip-elytra: true
+# 低重力下沉速度（格/tick）：0.08 约等于 1.6 格/秒；0 = 完全悬停。
+# 注意：不授予飞行权限，只是把下落速度夹到这个上限。
+player-float-fall-speed: 0.08
+# 低重力巡检周期（tick，越小越平滑、开销越大）
+player-float-interval-ticks: 2
+
+# ----------------------------------------------------------------------------
+# 兜底落点（只给 /cosmos tp 使用）
+#   Y 轴传送的落点严格等于缩放换算结果：不找安全落点、不吸附星球、不搭平台、
+#   也不会回退到这里。只有当玩家本来就在 Cosmos 里执行 /cosmos tp 时，
+#   才会把它送到本节的坐标（建议填一颗星球表面，否则会一直下落）。
+# ----------------------------------------------------------------------------
+fallback-location:
+  world: cosmos
+  x: 0.5
+  y: 160
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+
+# 星球列表已移到同目录的 planets.yml（改完后 /cosmos reload 生效）
+# 调试日志（输出每一次传送/校正的细节）
+debug: false

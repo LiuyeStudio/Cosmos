@@ -1,0 +1,78 @@
+# ============================================================================
+#  Cosmos - 所有发给玩家的消息 / all player-facing messages
+#  ---------------------------------------------------------------------------
+#  这里的每一行都支持 '&' 颜色代码，并用 {占位符} 插入变量。
+#  修改后执行 /cosmos reload 即可生效，不需要重启服务器。
+# ============================================================================
+
+# 前缀（对所有消息统一生效；想彻底不要前缀就留空 ''）
+prefix: '&8[&bCosmos&8] &r'
+
+# 世界切换（Y 轴传送）成功时是否给玩家发消息。
+# 默认 false：玩家在两个世界之间穿越时不会有任何提示。
+teleport-message: false
+
+messages:
+  # --- 传送 -----------------------------------------------------------
+  # 可用占位符：{direction} {world} {x} {y} {z}
+  teleport-success: '&a已传送 &7({direction}) &f→ &b{world} &f{x}, {y}, {z}'
+  # 可用占位符：{reason}
+  teleport-failed: '&c传送失败: &f{reason}'
+  teleport-unavailable: '&cCosmos 世界不可用，无法传送。'
+  teleport-rejected: '&c传送请求未被接受（可能正在传送中，或 Cosmos 世界不可用）。'
+  # 可用占位符：{player}
+  teleport-pending: '&a正在传送 &f{player} &a到 Cosmos…'
+  teleport-receiving: '&e你正在被传送到 Cosmos…'
+
+  # --- 命令 -----------------------------------------------------------
+  # 可用占位符：{arg} {label}
+  command-unknown: '&c未知子命令: &f{arg}&7，使用 /{label} help'
+  # 可用占位符：{permission}
+  command-no-permission: '&c你没有权限: &f{permission}'
+  command-tp-usage: '&e用法: /cosmos tp <player>'
+  # 可用占位符：{player}
+  command-player-offline: '&c玩家 &f{player} &c不在线。'
+  # 可用占位符：{label}
+  help-header: '&b===== Cosmos ====='
+  help-reload: '&f/{label} reload &7- 重载配置与消息 (cosmos.reload)'
+  help-tp: '&f/{label} tp [player] &7- 传送到 Cosmos (cosmos.tp)'
+  help-info: '&f/{label} info &7- 查看缩放 / 阈值 / 世界状态 (cosmos.info)'
+
+  # --- 重载 -----------------------------------------------------------
+  reload-start: '&e正在重载配置…'
+  # 可用占位符：{scale} {planets}
+  reload-success: '&a配置已重载并生效：缩放 1:{scale}。'
+  reload-success-no-world: '&e配置已重载，但 Cosmos 世界不可用（详见控制台）。'
+  # 可用占位符：{reason}
+  reload-failed: '&c重载失败: &f{reason}'
+
+  # --- /cosmos info ---------------------------------------------------
+  info-header: '&b===== Cosmos 状态 ====='
+  # 可用占位符：{servers} {folia}
+  info-runtime: '&7运行环境: &f{servers} &7(Folia={folia})'
+  # 可用占位符：{scale}
+  info-scale: '&7缩放: &f1 : {scale} &7(Cosmos 1 格 = 主世界 {scale} 格)'
+  # 可用占位符：{world}
+  info-main-world: '&7主世界: &f{world}'
+  info-main-world-missing: '&7主世界: &f{world} &c(未加载)'
+  # 可用占位符：{world} {environment}
+  info-cosmos-world: '&7Cosmos 世界: &f{world} &a(已加载, 环境 {environment})'
+  info-cosmos-world-missing: '&7Cosmos 世界: &f{world} &c(不可用)'
+  # 可用占位符：{y} {scale} {up} {down}
+  info-teleport: '&7传送高度: &f主世界 Y>={y-world} &7→ &fCosmos Y={up} &7| &fCosmos Y<={y-cosmos} &7→ &f主世界 Y={down} &7(X/{scale} 或 X*{scale})'
+  # 可用占位符：{border}
+  info-border: '&7世界边界: &f{border}'
+  # 可用占位符：{cooldown} {planets} {items} {players}
+  info-status: '&7冷却: &f{cooldown} ms &7| 悬浮掉落物: &f{items} &7| 玩家悬浮: &f{players}'
+  # 可用占位符：{cell} {chance} {min} {max} {y-min} {y-max} {palette}
+  info-procedural: '&7程序化星球: &a开 &7(网格 &f{cell} &7格, 每格 &f{chance} &7, 半径 &f{min}..{max} &7, Y &f{y-min}..{y-max} &7, 材质 &f{palette} &7种, 原点 &f{spawn})'
+  info-procedural-off: '&7程序化星球: &7关 &8(planets.yml 的 procedural.enabled)'
+  # 可用占位符：{x} {y} {z} {main-x} {main-z} {scale} {arrival}
+  info-coords-cosmos: '&7你正在 Cosmos (&f{x}, {y}, {z}&7)，对应主世界 X/Z = &f{main-x}, {main-z}&7 (X*{scale}, Z*{scale})；回主世界时 Y 固定为 {arrival}'
+  info-coords-main: '&7你正在主世界 (&f{x}, {y}, {z}&7)，对应 Cosmos X/Z = &f{main-x}, {main-z}&7 (X/{scale}, Z/{scale})；去 Cosmos 时 Y 固定为 {arrival}'
+
+  # --- 其它 -----------------------------------------------------------
+  enabled: '&a开'
+  disabled: '&7关'
+  border-synced: '与主世界同步 (1:{scale})'
+  border-not-synced: '不同步'

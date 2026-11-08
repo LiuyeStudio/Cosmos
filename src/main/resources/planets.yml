@@ -1,0 +1,68 @@
+# ============================================================================
+#  Cosmos - 星球生成 / planets
+#  ---------------------------------------------------------------------------
+#  宇宙里的星球**全部由 procedural 段程序化生成**：没有手写星球列表，向任何方向
+#  无限延伸，同一个种子永远得到同一片星空。
+#
+#  也就是说，这个文件只需要下面这一份 procedural 配置。
+#  旧版本里的 planets: 段（逐颗手写坐标）已经废弃，即使还留着也会被忽略，
+#  启动时会提示一次，可以直接删掉。
+#
+#  两条硬规则：
+#    1. 星球只生成在 Y >= teleport-y-cosmos 以上的范围，传送高度以下不画方块；
+#    2. 星球的 Y 范围会被夹进 Cosmos 世界的建筑范围：
+#       不使用数据包时 NORMAL = -64..319，THE_END / NETHER = 0..255。
+# ============================================================================
+
+# ============================================================================
+#  程序化星球 / procedural
+#  ---------------------------------------------------------------------------
+#  把水平面切成 cell-size × cell-size 的网格，每个网格单元用 (seed, 单元坐标)
+#  做哈希，决定这一格里有没有星球、球心在哪、多大、什么材质。因此：
+#    * 星球向任何方向无限延伸，不需要逐颗配置；
+#    * 同一个种子 + 同一份配置，生成结果永远一致（区块重载不漂移）；
+#    * 想换一片星空就改 seed。
+#
+#  cell-size            网格单元边长（格）。越小越密：96 ≈ 平均每 96 格一颗。
+#  chance               每个单元出现星球的概率（0..1）
+#  min/max-radius       球的半径范围（格）
+#  min/max-shell-thick  外壳厚度范围（格）
+#  min-y / max-y        球心 Y 的范围；实际还会被世界建筑范围与 teleport-y 再夹一次
+#  weight               同一区块内多颗球重叠时的绘制权重（小的先画、大的盖在上面；一般不用改）
+#  seed                 随机种子
+#  spawn-planet         是否在原点强制生成一颗地标星球（否则落点附近可能什么都没有）
+#  spawn-radius         地标星球半径（格）
+#  spawn-center-y       地标星球球心 Y
+#  palette              材质组合列表；每颗星球随机取一种
+#
+#  性能：每个区块最多检查 2x2 个单元，只对与区块相交的球做逐列填充，开销可以忽略。
+#  想更密就调小 cell-size / 调大 chance；想更稀就反过来。palette 留空会使用内置材质。
+# ============================================================================
+procedural:
+  enabled: true
+  cell-size: 96
+  chance: 0.6
+  min-radius: 6
+  max-radius: 28
+  min-shell-thickness: 2
+  max-shell-thickness: 8
+  min-y: 40
+  max-y: 240
+  weight: 0
+  seed: 20260101
+  spawn-planet: true
+  spawn-radius: 42
+  spawn-center-y: 60
+  palette:
+    - outer-block: minecraft:stone
+      core-block: minecraft:deepslate
+    - outer-block: minecraft:tuff
+      core-block: minecraft:andesite
+    - outer-block: minecraft:sand
+      core-block: minecraft:sandstone
+    - outer-block: minecraft:ice
+      core-block: minecraft:snow_block
+    - outer-block: minecraft:calcite
+      core-block: minecraft:dripstone_block
+    - outer-block: minecraft:basalt
+      core-block: minecraft:magma_block
