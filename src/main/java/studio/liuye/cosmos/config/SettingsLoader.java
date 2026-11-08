@@ -46,6 +46,18 @@ public final class SettingsLoader {
             palette(Material.CALCITE, Material.DRIPSTONE_BLOCK),
             palette(Material.BASALT, Material.MAGMA_BLOCK));
 
+    /** 键不存在时的哨兵值（与合法的传送高度区分开）。 */
+    private static final int MISSING = Integer.MIN_VALUE;
+
+    /** 出厂默认的主世界上升触发高度（与 config.yml / README 保持一致）。 */
+    private static final int DEFAULT_TELEPORT_Y_WORLD = 400;
+
+    /** 出厂默认的 Cosmos 回程触发高度。 */
+    private static final int DEFAULT_TELEPORT_Y_COSMOS = 0;
+
+    /** 单颗星球半径的硬上限（方块）。 */
+    private static final double MAX_PLANET_RADIUS = 128.0D;
+
     /** 只提示一次的消息键（解析会在 onLoad / onEnable / reload 各跑一次）。 */
     private static final Set<String> WARNED = ConcurrentHashMap.newKeySet();
 
@@ -123,24 +135,38 @@ public final class SettingsLoader {
 
         // --- 传送高度（两个世界共用同一个 Y）-----------------------------
         // --- 传送高度（两个世界各一个 Y）---------------------------------
-        int teleportYWorld = config.getInt("teleport-y-world", Integer.MIN_VALUE);
-        int teleportYCosmos = config.getInt("teleport-y-cosmos", Integer.MIN_VALUE);
-        if (teleportYWorld == Integer.MIN_VALUE || teleportYCosmos == Integer.MIN_VALUE) {
+        int teleportYWorld = readTeleportY(config, "teleport-y-world", DEFAULT_TELEPORT_Y_WORLD, logger);
+        int teleportYCosmos = readTeleportY(config, "teleport-y-cosmos", DEFAULT_TELEPORT_Y_COSMOS, logger);
+        if (teleportYWorld == MISSING || teleportYCosmos == MISSING) {
             // 迁移：旧的单个 teleport-y / main-world-to-cosmos-y 同时喂给两边
-            int legacy = config.getInt("teleport-y", Integer.MIN_VALUE);
-            if (legacy == Integer.MIN_VALUE) {
-                legacy = config.getInt("main-world-to-cosmos-y", 150);
+            int legacy = readTeleportY(config, "teleport-y", MISSING, logger);
+            if (legacy == MISSING) {
+                legacy = readTeleportY(config, "main-world-to-cosmos-y", MISSING, logger);
             }
-            if (teleportYWorld == Integer.MIN_VALUE) {
-                teleportYWorld = legacy;
+            if (legacy != MISSING) {
+                if (teleportYWorld == MISSING) {
+                    teleportYWorld = legacy;
+                }
+                if (teleportYCosmos == MISSING) {
+                    teleportYCosmos = legacy;
+                }
+                warnOnce(logger, "legacy-threshold", "旧的 teleport-y / main-world-to-cosmos-y 已被"
+                        + " teleport-y-world 与 teleport-y-cosmos 取代（两个世界各自一个高度）。"
+                        + "当前按 teleport-y-world=" + teleportYWorld + "、teleport-y-cosmos=" + teleportYCosmos
+                        + " 处理，请改用新键。");
+            } else {
+                // 两个新键都缺失：不能再静默退到 150（出厂配置是 400 / 0，对不上会让玩家找不到入口）
+                if (teleportYWorld == MISSING) {
+                    teleportYWorld = DEFAULT_TELEPORT_Y_WORLD;
+                }
+                if (teleportYCosmos == MISSING) {
+                    teleportYCosmos = DEFAULT_TELEPORT_Y_COSMOS;
+                }
+                warnOnce(logger, "threshold-missing", "config.yml 缺少 teleport-y-world / teleport-y-cosmos："
+                        + "已按出厂默认 teleport-y-world=" + DEFAULT_TELEPORT_Y_WORLD
+                        + "、teleport-y-cosmos=" + DEFAULT_TELEPORT_Y_COSMOS
+                        + " 处理。请补上这两个键，否则升级后上升触发点会变。");
             }
-            if (teleportYCosmos == Integer.MIN_VALUE) {
-                teleportYCosmos = legacy;
-            }
-            warnOnce(logger, "legacy-threshold", "旧的 teleport-y / main-world-to-cosmos-y / cosmos-to-main-world-y 已被"
-                    + " teleport-y-world 与 teleport-y-cosmos 取代（两个世界各自一个高度）。"
-                    + "当前按 teleport-y-world=" + teleportYWorld + "、teleport-y-cosmos=" + teleportYCosmos
-                    + " 处理，请改用新键。");
         }
         int arrivalYOffset = boundedInt(config, "teleport-y-offset", 10, 0, 256, logger);
         builder.teleportYWorld(teleportYWorld);
@@ -204,7 +230,8 @@ public final class SettingsLoader {
         builder.floatFreezeVelocity(config.getBoolean("float-freeze-velocity", true));
         builder.floatUnlimitedLifetime(config.getBoolean("float-unlimited-lifetime", false));
         builder.floatSweepIntervalTicks(Math.max(0, config.getInt("float-sweep-interval-ticks", 200)));
-        builder.floatSweepRadius(Math.max(1.0D, config.getDouble("float-sweep-radius", 16.0D)));
+        // 0 = 关闭「按玩家位置重新扫描」（掉落物自己的悬浮任务不受影响）
+        builder.floatSweepRadius(Math.max(0.0D, config.getDouble("float-sweep-radius", 16.0D)));
 
         // --- 玩家悬浮 ---------------------------------------------------
         builder.playerFloatEnabled(config.getBoolean("player-float-enabled", true));
@@ -272,7 +299,19 @@ public final class SettingsLoader {
         int cellSize = boundedInt(section, "cell-size", 96, 16, 4096, logger);
         double chance = clamp(section.getDouble("chance", 0.6D), 0.0D, 1.0D);
         double minRadius = Math.max(0.5D, section.getDouble("min-radius", 6.0D));
+        // 半径必须留在自己所在的单元里：否则每个区块要枚举的单元数按 (r / cell)^2 增长，
+        // cell=16 + r=300 时单区块要扫上千个单元、写百万级方块（生成线程直接卡死）。
+        double radiusLimit = Math.min(MAX_PLANET_RADIUS, Math.max(0.5D, cellSize / 2.0D));
         double maxRadius = Math.max(minRadius, section.getDouble("max-radius", 28.0D));
+        if (maxRadius > radiusLimit) {
+            warnOnce(logger, "procedural-max-radius", "procedural.max-radius=" + trim(maxRadius)
+                    + " 超过上限 " + trim(radiusLimit) + "（网格 " + cellSize + " 格时半径最多取网格的一半），"
+                    + "已修正；想要更大的星球请同时调大 cell-size。");
+            maxRadius = radiusLimit;
+        }
+        if (minRadius > maxRadius) {
+            minRadius = maxRadius;
+        }
         double minShell = Math.max(0.0D, section.getDouble("min-shell-thickness", 2.0D));
         double maxShell = Math.max(minShell, section.getDouble("max-shell-thickness", 8.0D));
         int minY = section.getInt("min-y", 40);
@@ -287,6 +326,11 @@ public final class SettingsLoader {
         long seed = section.getLong("seed", 20260101L);
         boolean spawnPlanet = section.getBoolean("spawn-planet", true);
         double spawnRadius = Math.max(1.0D, section.getDouble("spawn-radius", 42.0D));
+        if (spawnRadius > MAX_PLANET_RADIUS) {
+            warnOnce(logger, "procedural-spawn-radius", "procedural.spawn-radius=" + trim(spawnRadius)
+                    + " 超过上限 " + trim(MAX_PLANET_RADIUS) + "，已修正。");
+            spawnRadius = MAX_PLANET_RADIUS;
+        }
         int spawnCenterY = section.getInt("spawn-center-y", 60);
 
         List<ProceduralPlanetSettings.PaletteEntry> palette = readPalette(section.getMapList("palette"), logger);
@@ -377,7 +421,8 @@ public final class SettingsLoader {
         float yaw = (float) section.getDouble("yaw", fallback.yaw());
         float pitch = (float) section.getDouble("pitch", fallback.pitch());
         if (Bukkit.getWorld(world) == null && !Bukkit.getWorlds().isEmpty()) {
-            logger.warning(path + " 指定的世界 '" + world + "' 目前不存在，该兜底落点在世界上线前不可用。");
+            warnOnce(logger, "fallback-world-" + world,
+                    path + " 指定的世界 '" + world + "' 目前不存在，该兜底落点在世界上线前不可用。");
         }
         return new CosmosSettings.Fallback(world, x, y, z, yaw, pitch);
     }
@@ -404,13 +449,21 @@ public final class SettingsLoader {
             id = id.substring(colon + 1);
         }
         // Registry.BIOME 已废弃，改用新的 RegistryAccess（1.21.3+）
-        Registry<Biome> biomes = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME);
-        Biome biome = biomes.get(NamespacedKey.minecraft(id));
-        if (biome == null) {
-            logger.warning("cosmos-biome '" + raw + "' 不存在，已回退到 the_end。");
+        try {
+            Registry<Biome> biomes = RegistryAccess.registryAccess().getRegistry(RegistryKey.BIOME);
+            Biome biome = biomes.get(NamespacedKey.minecraft(id));
+            if (biome == null) {
+                logger.warning("cosmos-biome '" + raw + "' 不存在，已回退到 the_end。");
+                return Biome.THE_END;
+            }
+            return biome;
+        } catch (RuntimeException failure) {
+            // NamespacedKey.minecraft 对空格 / 中文 / 多个冒号会抛 IllegalArgumentException：
+            // 这里必须接住，否则 onEnable 失败会把整个插件 disable 掉。
+            logger.warning("cosmos-biome '" + raw + "' 不是合法的命名空间 ID（" + failure.getMessage()
+                    + "），已回退到 the_end。");
             return Biome.THE_END;
         }
-        return biome;
     }
 
     private static BlockData blockData(Object raw, BlockData fallback, String planet, Logger logger) {
@@ -446,6 +499,30 @@ public final class SettingsLoader {
     private static void warnOnce(Logger logger, String key, String message) {
         if (WARNED.add(key)) {
             logger.warning(message);
+        }
+    }
+
+    /**
+     * 读取一个传送高度键。
+     *
+     * <p>{@code getInt} 在「键不存在」和「值不是整数」（例如 YAML 里写成 {@code "400"}）时都会静默返回默认值，
+     * 旧实现因此悄悄退到 150；这里把两种情况分开：不存在返回 {@link #MISSING} 交给迁移逻辑，
+     * 类型错误则告警并按 {@code fallback} 处理。</p>
+     */
+    private static int readTeleportY(ConfigurationSection config, String path, int fallback, Logger logger) {
+        Object raw = config.get(path);
+        if (raw == null) {
+            return MISSING;
+        }
+        if (raw instanceof Number number) {
+            return number.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(raw).trim());
+        } catch (NumberFormatException failure) {
+            warnOnce(logger, "bad-int-" + path, path + " 的值 '" + raw + "' 不是整数，已按 " + fallback
+                    + " 处理（请检查是否多写了引号或小数点）。");
+            return fallback;
         }
     }
 

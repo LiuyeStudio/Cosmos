@@ -76,6 +76,23 @@ public final class Planet implements Comparable<Planet> {
         return outerBlock;
     }
 
+    /**
+     * 某一列「站上去的 Y」：球面最高方块的上一格；该列不在球体水平范围内时返回 {@link Double#NaN}。
+     *
+     * <p>计算方式与 {@code PlanetChunkGenerator#paint} 完全一致（{@code floor(cy + h - 0.5)} 是最高方块），
+     * 因此传送落点与真实生成结果不会错位。</p>
+     */
+    public double standYAt(int blockX, int blockZ) {
+        double dx = (blockX + 0.5D) - centerX;
+        double dz = (blockZ + 0.5D) - centerZ;
+        double horizontal = dx * dx + dz * dz;
+        if (horizontal > outerRadiusSquared) {
+            return Double.NaN;
+        }
+        double halfHeight = Math.sqrt(outerRadiusSquared - horizontal);
+        return Math.floor(centerY + halfHeight - 0.5D) + 1.0D;
+    }
+
     public String name() {
         return name;
     }

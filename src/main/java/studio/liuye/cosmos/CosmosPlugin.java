@@ -131,11 +131,13 @@ public final class CosmosPlugin extends JavaPlugin {
             if (worlds.ensureWorld(loaded) == null) {
                 getLogger().warning("Cosmos 世界当前不可用：传送功能会在世界可用前保持静默，"
                         + "可使用 /cosmos reload 重试创建。");
+                return;
             }
+            // 世界就绪之后才能扫到已有掉落物：抢在建世界之前调用只会扫到 null。
+            itemFloatService.sweepExisting();
         });
 
-        // 校正已经存在的掉落物（Folia 下按玩家区域分批处理）与在线玩家的悬浮状态
-        itemFloatService.sweepExisting();
+        // 在线玩家的悬浮状态与世界无关，可以立即校正
         playerFloatService.refreshAll();
     }
 
@@ -203,7 +205,14 @@ public final class CosmosPlugin extends JavaPlugin {
         if (this.settings.get() != null) {
             return;
         }
-        File file = new File(getDataFolder(), "config.yml");
+        File dataFolder = getDataFolder();
+        if (dataFolder == null) {
+            // 极早期加载（世界先于插件初始化）时数据目录还不存在：不能用 new File(null, ...)
+            getLogger().warning("插件数据目录尚未初始化（世界加载早于插件初始化），"
+                    + "Cosmos 生成器暂时使用空星球列表；下一次世界加载会恢复正常。");
+            return;
+        }
+        File file = new File(dataFolder, "config.yml");
         if (!file.isFile()) {
             // 首次启动且世界加载早于 onLoad：补一份默认配置，否则生成器只能拿到空星球列表
             try {
@@ -370,7 +379,7 @@ public final class CosmosPlugin extends JavaPlugin {
         scheduler.global(() -> {
             CosmosSettings current = settings.get();
             if (current == null) {
-                messages.send(sender, "reload-failed", "reason", "配置尚未初始化完成");
+                messages.send(sender, "info-unavailable");
                 return;
             }
             World main = getServer().getWorld(current.mainWorldName());

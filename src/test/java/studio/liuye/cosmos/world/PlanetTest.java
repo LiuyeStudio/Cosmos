@@ -74,4 +74,14 @@ public class PlanetTest {
         assertEquals("heavy-large", planets.get(1).name());
         assertEquals("heavy-small", planets.get(2).name());
     }
+
+    @Test
+    public void standYAtMatchesTheTopBlockOfThatColumn() {
+        Planet planet = new Planet(settings("home", 0.5D, 64.5D, 0.5D, 10.0D, 0.0D, -1.0D, 0));
+
+        // 球心正上方的最高方块 y = floor(64.5 + 10 - 0.5) = 74，站上去是 75
+        assertEquals(75.0D, planet.standYAt(0, 0), 1.0E-9D);
+        // 球体水平范围之外没有可站立面
+        assertTrue(Double.isNaN(planet.standYAt(20, 0)));
+    }
 }

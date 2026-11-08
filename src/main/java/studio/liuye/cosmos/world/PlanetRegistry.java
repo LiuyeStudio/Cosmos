@@ -89,6 +89,8 @@ public final class PlanetRegistry {
     public List<Planet> planetsNear(int baseX, int baseZ, int minY, int maxY) {
         List<Planet> near = procedural.planetsNear(baseX, baseZ, minY, maxY);
         if (manual.isEmpty()) {
+            // 生产路径必须也排序：同一区块内多颗球重叠时，绘制顺序决定谁盖住谁。
+            near.sort(Comparator.naturalOrder());
             return near;
         }
         List<Planet> merged = new ArrayList<>(manual.size() + near.size());

@@ -2,16 +2,16 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> **1.1.0** · Paper 26.3 / Folia 26.3
+> **1.1.1** · Paper 26.3 / Folia 26.3
 
-Cosmos adds a second dimension above your world: keep flying up and you break through into a silent starfield where every planet is generated from a coordinate hash. Fall back down and you return to where you left off.
+Cosmos adds a second dimension above your world: keep flying up and you break through into a silent starfield where every planet is generated from a coordinate hash. Fall back down and you return to the same spot you left from.
 
 ## Features
 
 | Feature | What it gives you |
 |---|---|
 | **A sky full of planets** | Every planet is generated from its coordinates and a seed, so the same seed always produces the same sky. Spheres of stone, sand, ice, basalt and more, each with a crust, a thicker shell and a solid core. |
-| **Y-axis travel** | Fly past `Y = 400` in the overworld to enter Cosmos; drop below `Y = 0` in Cosmos to come home. No portals, no commands needed. |
+| **Y-axis travel** | Fly past `Y = 400` in the overworld to enter Cosmos; drop to `Y = 0` or below in Cosmos to come home. No portals, no commands needed. |
 | **Scale that keeps you oriented** | The two worlds share one horizontal map at 1:64 — `x = 1600` in the overworld is `x = 25` in Cosmos. Your position always maps back. |
 | **Low gravity, elytra-first** | Falling is slowed to a gentle drift, and anyone wearing an elytra is left completely alone so gliding feels vanilla. |
 | **Floating items** | Dropped items hang in space instead of dropping forever (experience orbs optional). |
@@ -25,16 +25,16 @@ Cosmos adds a second dimension above your world: keep flying up and you break th
 
 ## Install
 
-1. Drop `Cosmos-1.1.0.jar` into `plugins/`.
+1. Drop `Cosmos-1.1.1.jar` into `plugins/`.
 2. Start the server.
 3. That's it — the `cosmos` world is created the first time someone travels there, or immediately with `/cosmos reload`.
 
 ## Your first trip
 
 1. Stand in the overworld and fly (or build) up to `Y = 400`.
-2. You are moved to Cosmos at `(x / 64, 10, z / 64)` — right under the origin planet.
+2. You are moved to Cosmos at `(x / 64, 10, z / 64)`. The landing spot is checked first: if that column holds a planet you stand on its surface, otherwise you land just above the origin landmark — never in open space with nothing below.
 3. Look up: that planet is your landmark. Everything else is procedural sky.
-4. To come back, drop below `Y = 0` in Cosmos and you reappear at `(x * 64, 390, z * 64)`.
+4. To come back, drop to `Y = 0` or below in Cosmos and you reappear at `(x * 64, 390, z * 64)`.
 
 A 3-second cooldown after each jump prevents bouncing back and forth, and the Cosmos world border always mirrors your overworld border.
 
@@ -42,7 +42,7 @@ A 3-second cooldown after each jump prevents bouncing back and forth, and the Co
 
 ## Configuration
 
-Two files, both in `plugins/Cosmos/`. Run `/cosmos reload` after editing; world-level settings (name, environment, seed) only apply to a world that is created afterwards.
+Three files, all in `plugins/Cosmos/`: `config.yml` (travel, world, floating), `planets.yml` (the starfield) and `message.yml` (every player-facing string). Run `/cosmos reload` after editing; world-level settings (name, environment, seed) only apply to a world that is created afterwards.
 
 ### `config.yml` — travel
 
@@ -99,11 +99,11 @@ Two files, both in `plugins/Cosmos/`. Run `/cosmos reload` after editing; world-
 | `chance` | `0.6` | Probability that a cell holds a planet. Higher = denser sky. |
 | `min-radius` / `max-radius` | `6` / `28` | Size range of generated planets. |
 | `min-shell-thickness` / `max-shell-thickness` | `2` / `8` | Thickness of the crust between surface and core. |
-| `min-y` / `max-y` | `40` / `240` | Height band for planet centres (clamped to the world's build range). |
+| `min-y` / `max-y` | `40` / `240` | Height band the whole planet may occupy; the centre is inset by its radius, then clamped to the world's build range. |
 | `seed` | `20260101` | Change it for a completely different sky. |
 | `spawn-planet` | `true` | Keep one planet directly above the arrival point. |
 | `spawn-radius` / `spawn-center-y` | `42` / `60` | Size and height of that landmark planet. |
-| `weight` | `0` | Draw order when planets overlap. |
+| `weight` | `0` | Draw order when planets overlap: lower first; at equal weight larger planets are drawn first, so smaller ones end up on top. |
 | `palette` | 6 entries | Block pairs (`outer-block` / `core-block`) used to build planets; one is picked per planet. |
 
 Quick tuning:
@@ -129,7 +129,7 @@ Quick tuning:
 | Symptom | Fix |
 |---|---|
 | Flying up does nothing | You must be in `main-world` and at or above `teleport-y-world`. Check `/cosmos info`. |
-| I arrive in empty space | `spawn-planet` is off, or `spawn-center-y` puts the landmark out of reach — set `spawn-center-y: 60`. |
+| I land on a planet instead of the mapped height | Expected — the arrival snaps to the surface so you cannot fall straight back through `Y = 0`. Set `spawn-planet: false` and make sure the column is empty if you want the raw height. |
 | Planets look sparse | Lower `cell-size` or raise `chance`; or pick a new `seed`. |
 | The sky looks nothing like the screenshots | Chunks that already exist are never redrawn. Travel to new areas, or change `cosmos-world-name` for a fresh world. |
 | Elytra barely works in Cosmos | Make sure `player-float-skip-elytra` is `true` (the default). |
@@ -143,6 +143,8 @@ Quick tuning:
 - Cosmos is a normal Bukkit world, so its height limit follows `cosmos-world-environment` (`THE_END` = 256 blocks). Planets that would stick out are flattened at the top.
 - `THE_END` skies have no sun or clouds — that is the point, but it means no natural light source.
 - Changing the environment or seed of an existing world is not supported; rename the world instead.
+- The safe-arrival snap only applies to overworld → Cosmos; the return trip still uses exactly `teleport-y-world - offset`.
+- Folia has no `createWorld` API: prepare the `cosmos` world ahead of time (or create it once on Paper and copy the folder over).
 
 ## License
 

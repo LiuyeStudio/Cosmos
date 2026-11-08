@@ -15,6 +15,8 @@ import studio.liuye.cosmos.CosmosPlugin;
 import studio.liuye.cosmos.config.CosmosSettings;
 import studio.liuye.cosmos.util.Messages;
 import studio.liuye.cosmos.world.CosmosWorldService;
+import studio.liuye.cosmos.world.Planet;
+import studio.liuye.cosmos.world.PlanetRegistry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,9 +37,12 @@ import java.util.concurrent.TimeoutException;
  * 主世界 → Cosmos :  x' = x / scale , z' = z / scale , y' = teleport-y-cosmos + offset
  * Cosmos → 主世界 :  x' = x * scale , z' = z * scale , y' = teleport-y-world - offset
  * </pre>
- * <p>落点就是换算出来的那个坐标本身：<b>不做安全落点搜索、不吸附星球、不生成平台、
- * 也不回退到配置的兜底点</b>。目标位置是虚空就落在虚空，玩家会继续下落并触发下一次返回判定。
- * 一次往返（中途不自己移动）X/Z/Y 都与出发时一致，只有 ±offset 的往返偏移被互相抵消。</p>
+ * <p>换算本身不做落点搜索、不生成平台、也不回退到配置的兜底点；但「去 Cosmos」的落点会经过
+ * {@link #adjustCosmosArrival(Location)} 做一次安全修正：那一列有星球就站在球面上，
+ * 没有任何星球就改到原点地标上方。否则出厂默认（到达 Y 低于所有星球）会让玩家一路下坠、
+ * 几秒后又被传回主世界。</p>
+ * <p>一次往返（中途不自己移动）X/Z/Y 都与出发时一致，只有 ±offset 的往返偏移被互相抵消；
+ * 例外是「落点列没有星球」被吸附到地标的那一次。</p>
  *
  * <h2>Folia 线程模型</h2>
  * <p>一次传送分三步，每一步都跑在正确的线程上：</p>
@@ -136,6 +141,9 @@ public final class TeleportService {
         }
         Location from = player.getLocation();
         Location desired = computeDestination(settings, direction, from, targetWorld);
+        if (direction == Direction.MAIN_TO_COSMOS) {
+            desired = adjustCosmosArrival(desired);
+        }
         return requestTo(player, desired, direction, reason);
     }
 
@@ -158,7 +166,7 @@ public final class TeleportService {
         if (!inFlight.add(playerId)) {
             return false;
         }
-        plugin.scheduler().entityNextTick(player, () -> {
+        ScheduledTask task = plugin.scheduler().entityNextTick(player, () -> {
             if (!player.isOnline()) {
                 inFlight.remove(playerId);
                 return;
@@ -174,10 +182,17 @@ public final class TeleportService {
             if (settings.isCosmosWorld(from.getWorld())) {
                 desired = fallbackInCosmos(settings, cosmos, from);
             } else {
-                desired = computeDestination(settings, Direction.MAIN_TO_COSMOS, from, cosmos);
+                desired = adjustCosmosArrival(
+                        computeDestination(settings, Direction.MAIN_TO_COSMOS, from, cosmos));
             }
             beginTransfer(player, desired, Direction.MAIN_TO_COSMOS, "command");
         }, () -> inFlight.remove(playerId));
+        if (task == null) {
+            // 实体已被移除时 EntityScheduler 不会执行任何回调：必须在这里自己释放，否则 UUID 永久占位
+            inFlight.remove(playerId);
+            plugin.getLogger().fine(() -> "传送请求被丢弃：实体已不可调度 (" + player.getName() + ")");
+            return false;
+        }
         return true;
     }
 
@@ -244,6 +259,65 @@ public final class TeleportService {
         return Math.max(-MAX_HORIZONTAL_COORDINATE, Math.min(MAX_HORIZONTAL_COORDINATE, value));
     }
 
+    /**
+     * 「去 Cosmos」落点的安全修正（在主线程之外只读数学，不触碰方块）。
+     *
+     * <p>规则：</p>
+     * <ol>
+     *   <li>落点那一列有星球 → 至少站到球面上（换算出的 Y 更高就保持不变，落地后自然下落到星球）；</li>
+     *   <li>那一列没有任何星球 → 改到原点地标正上方，避免出厂默认下「落进虚空一路下坠」；</li>
+     *   <li>没有地标（关掉了 {@code spawn-planet}）→ 保持原坐标，并在日志里说明。</li>
+     * </ol>
+     */
+    private Location adjustCosmosArrival(Location desired) {
+        World world = desired.getWorld();
+        if (world == null) {
+            return desired;
+        }
+        PlanetRegistry registry = plugin.planetRegistry();
+        if (registry == null || registry.isEmpty()) {
+            return desired;
+        }
+
+        int minY = world.getMinHeight();
+        int maxY = world.getMaxHeight() - 1;
+        Location adjusted = desired.clone();
+        double stand = highestStandY(registry, adjusted.getBlockX(), adjusted.getBlockZ(), minY, maxY);
+        if (!Double.isNaN(stand)) {
+            if (adjusted.getY() < stand) {
+                adjusted.setY(stand);
+            }
+            return adjusted;
+        }
+
+        double spawnStand = highestStandY(registry, 0, 0, minY, maxY);
+        if (Double.isNaN(spawnStand)) {
+            plugin.getLogger().fine(() -> "落点列没有星球，且原点地标已关闭：保持换算坐标 "
+                    + "(" + adjusted.getX() + ", " + adjusted.getY() + ", " + adjusted.getZ() + ")");
+            return adjusted;
+        }
+        adjusted.setX(0.5D);
+        adjusted.setZ(0.5D);
+        adjusted.setY(Math.max(spawnStand, minY + 1.0D));
+        plugin.getLogger().fine(() -> "落点列没有星球，已改到原点地标 (0.5, " + adjusted.getY() + ", 0.5)");
+        return adjusted;
+    }
+
+    /** 某一列所有星球里最高的可站立 Y；没有星球时返回 {@link Double#NaN}。 */
+    private static double highestStandY(PlanetRegistry registry, int blockX, int blockZ, int minY, int maxY) {
+        double best = Double.NaN;
+        for (Planet planet : registry.planetsNear(blockX, blockZ, minY, maxY)) {
+            double stand = planet.standYAt(blockX, blockZ);
+            if (Double.isNaN(stand) || stand > maxY) {
+                continue;
+            }
+            if (Double.isNaN(best) || stand > best) {
+                best = stand;
+            }
+        }
+        return best;
+    }
+
     // ==================================================================
     // 2) 请求入队（EntityScheduler）
     // ==================================================================
@@ -266,13 +340,19 @@ public final class TeleportService {
         // 这里刻意使用 entityNextTick 而不是 entity：entity 在「当前线程已拥有该实体」时会就地执行，
         // 而 PlayerMoveEvent 的回调返回后服务端还会 absSnapTo(移动包坐标)，
         // 会把刚刚设好的目标位置改回出发坐标（跨世界放置实体时区域线程校验失败 → 服务端 halt）。
-        plugin.scheduler().entityNextTick(player, () -> {
+        ScheduledTask task = plugin.scheduler().entityNextTick(player, () -> {
             if (!player.isOnline()) {
                 inFlight.remove(playerId);
                 return;
             }
             beginTransfer(player, desired.clone(), direction, reason);
         }, () -> inFlight.remove(playerId));
+        if (task == null) {
+            inFlight.remove(playerId);
+            plugin.getLogger().fine(() -> "传送请求被丢弃：实体已不可调度 (" + player.getName()
+                    + ", " + direction.label() + ")");
+            return false;
+        }
         return true;
     }
 
@@ -322,7 +402,8 @@ public final class TeleportService {
         CompletableFuture<Void> ready = CompletableFuture.allOf(loads.toArray(new CompletableFuture<?>[0]))
                 // 预加载只是锦上添花：迟迟不就绪时不能把玩家卡在传送中
                 .orTimeout(3, TimeUnit.SECONDS);
-        ready.whenComplete((ignored, error) -> plugin.scheduler().entityNextTick(player, () -> {
+        ready.whenComplete((ignored, error) -> {
+            ScheduledTask task = plugin.scheduler().entityNextTick(player, () -> {
             if (!player.isOnline()) {
                 inFlight.remove(playerId);
                 return;
@@ -335,7 +416,11 @@ public final class TeleportService {
                 plugin.getLogger().fine(() -> "落点区块预加载超时，仍按原计划传送 (" + player.getName() + ")");
             }
             doTeleport(player, desired, direction, reason);
-        }, () -> inFlight.remove(playerId)));
+            }, () -> inFlight.remove(playerId));
+            if (task == null) {
+                inFlight.remove(playerId);
+            }
+        });
     }
 
     // ==================================================================

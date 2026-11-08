@@ -40,13 +40,14 @@ messages:
 
   # --- 重载 -----------------------------------------------------------
   reload-start: '&e正在重载配置…'
-  # 可用占位符：{scale} {planets}
+  # 可用占位符：{scale}
   reload-success: '&a配置已重载并生效：缩放 1:{scale}。'
   reload-success-no-world: '&e配置已重载，但 Cosmos 世界不可用（详见控制台）。'
   # 可用占位符：{reason}
   reload-failed: '&c重载失败: &f{reason}'
 
   # --- /cosmos info ---------------------------------------------------
+  info-unavailable: '&c配置尚未加载完成，请稍后再试。'
   info-header: '&b===== Cosmos 状态 ====='
   # 可用占位符：{servers} {folia}
   info-runtime: '&7运行环境: &f{servers} &7(Folia={folia})'
@@ -58,13 +59,13 @@ messages:
   # 可用占位符：{world} {environment}
   info-cosmos-world: '&7Cosmos 世界: &f{world} &a(已加载, 环境 {environment})'
   info-cosmos-world-missing: '&7Cosmos 世界: &f{world} &c(不可用)'
-  # 可用占位符：{y} {scale} {up} {down}
+  # 可用占位符：{y-world} {y-cosmos} {scale} {up} {down}
   info-teleport: '&7传送高度: &f主世界 Y>={y-world} &7→ &fCosmos Y={up} &7| &fCosmos Y<={y-cosmos} &7→ &f主世界 Y={down} &7(X/{scale} 或 X*{scale})'
   # 可用占位符：{border}
   info-border: '&7世界边界: &f{border}'
-  # 可用占位符：{cooldown} {planets} {items} {players}
+  # 可用占位符：{cooldown} {items} {players}
   info-status: '&7冷却: &f{cooldown} ms &7| 悬浮掉落物: &f{items} &7| 玩家悬浮: &f{players}'
-  # 可用占位符：{cell} {chance} {min} {max} {y-min} {y-max} {palette}
+  # 可用占位符：{cell} {chance} {min} {max} {y-min} {y-max} {palette} {spawn}
   info-procedural: '&7程序化星球: &a开 &7(网格 &f{cell} &7格, 每格 &f{chance} &7, 半径 &f{min}..{max} &7, Y &f{y-min}..{y-max} &7, 材质 &f{palette} &7种, 原点 &f{spawn})'
   info-procedural-off: '&7程序化星球: &7关 &8(planets.yml 的 procedural.enabled)'
   # 可用占位符：{x} {y} {z} {main-x} {main-z} {scale} {arrival}

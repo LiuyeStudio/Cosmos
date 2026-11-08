@@ -27,8 +27,10 @@
 #  chance               每个单元出现星球的概率（0..1）
 #  min/max-radius       球的半径范围（格）
 #  min/max-shell-thick  外壳厚度范围（格）
-#  min-y / max-y        球心 Y 的范围；实际还会被世界建筑范围与 teleport-y 再夹一次
-#  weight               同一区块内多颗球重叠时的绘制权重（小的先画、大的盖在上面；一般不用改）
+#  min-y / max-y        整颗球（含外壳）允许占据的 Y 范围；球心会被自动夹到
+#                       [min-y+半径, max-y-半径]，再与世界建筑范围、teleport-y 取交集
+#  weight               多颗球重叠时的绘制顺序：数值小的先画；同一 weight 下大球先画、
+#                       小球后画（所以小球盖在大球上面）；一般不用改
 #  seed                 随机种子
 #  spawn-planet         是否在原点强制生成一颗地标星球（否则落点附近可能什么都没有）
 #  spawn-radius         地标星球半径（格）

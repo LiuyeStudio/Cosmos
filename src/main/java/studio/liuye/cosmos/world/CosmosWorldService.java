@@ -16,6 +16,8 @@ import studio.liuye.cosmos.config.CosmosSettings;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
@@ -35,7 +37,12 @@ public final class CosmosWorldService {
     private final CosmosPlugin plugin;
 
     private volatile World cosmosWorld;
-    private volatile PlanetChunkGenerator generator;
+
+    /** 所有出自本插件的生成器实例（服务端可能为多个世界各建一个）。 */
+    private final Set<PlanetChunkGenerator> generators = ConcurrentHashMap.newKeySet();
+
+    /** 本次进程里已经按配置设置过出生点的世界（之后的 reload 不再覆盖 /setworldspawn）。 */
+    private final Set<String> spawnApplied = ConcurrentHashMap.newKeySet();
     /** 生成器不匹配的警告只打一次，避免看门狗刷屏。 */
     private volatile boolean warnedGeneratorMismatch;
     /** 世界环境与配置不一致的警告只打一次。 */
@@ -51,14 +58,23 @@ public final class CosmosWorldService {
         return cosmosWorld;
     }
 
+    /** 第一个登记进来的生成器（仅用于诊断输出）。 */
     public PlanetChunkGenerator generator() {
-        return generator;
+        for (PlanetChunkGenerator candidate : generators) {
+            return candidate;
+        }
+        return null;
     }
 
-    /** 世界从磁盘加载时由 {@code JavaPlugin#getDefaultWorldGenerator} 提供的实例登记到这里。 */
+    /**
+     * 世界从磁盘加载时由 {@code JavaPlugin#getDefaultWorldGenerator} 提供的实例登记到这里。
+     *
+     * <p>服务端可能为多个世界分别调用钩子（Multiverse 里多个世界共用 'Cosmos' 生成器），
+     * 因此这里是「全部登记」，{@link #updateRegistry(PlanetRegistry)} 会推给每一个。</p>
+     */
     public void adoptGenerator(PlanetChunkGenerator adopted) {
-        if (adopted != null && this.generator == null) {
-            this.generator = adopted;
+        if (adopted != null) {
+            this.generators.add(adopted);
         }
     }
 
@@ -80,7 +96,7 @@ public final class CosmosWorldService {
                     plugin.getLogger().info("Cosmos 世界 '" + settings.cosmosWorldName()
                             + "' 当前未加载（可能被世界管理插件卸载），等待其重新加载。");
                     this.cosmosWorld = null;
-                    this.generator = null;
+                    this.generators.clear();
                     this.warnedGeneratorMismatch = false;
                 }
                 return null;
@@ -107,7 +123,7 @@ public final class CosmosWorldService {
         ChunkGenerator currentGenerator = world.getGenerator();
         if (currentGenerator instanceof PlanetChunkGenerator ourGenerator) {
             this.warnedGeneratorMismatch = false;
-            this.generator = ourGenerator;
+            this.generators.add(ourGenerator);
             ourGenerator.setBiome(settings.cosmosBiome());
             // 世界上一次会话 / 外部插件加载时就存在，注册表必须立刻生效
             ourGenerator.setRegistry(plugin.planetRegistry());
@@ -118,7 +134,6 @@ public final class CosmosWorldService {
         } else if (isOurGeneratorClass(currentGenerator)) {
             // 热重载（PlugManX 等）之后，世界里的生成器实例来自上一次插件加载的类加载器：
             // instanceof 必然为 false，也无法强转成新类，只能继续沿用旧实例。
-            this.generator = null;
             if (!this.warnedGeneratorMismatch) {
                 this.warnedGeneratorMismatch = true;
                 plugin.getLogger().warning("世界 '" + world.getName() + "' 里的 Cosmos 生成器来自上一次插件加载"
@@ -204,7 +219,7 @@ public final class CosmosWorldService {
         }
 
         this.cosmosWorld = world;
-        this.generator = created;
+        this.generators.add(created);
         this.warnedGeneratorMismatch = false;
         plugin.getLogger().info("已创建 Cosmos 世界 '" + world.getName() + "'（环境 "
                 + world.getEnvironment() + "，群系 " + settings.cosmosBiome().getKey() + "）");
@@ -214,18 +229,16 @@ public final class CosmosWorldService {
 
     /** reload 时更新生成器使用的星球快照；已生成区块不受影响。 */
     public void updateRegistry(PlanetRegistry registry) {
-        PlanetChunkGenerator current = this.generator;
-        if (current == null) {
+        if (generators.isEmpty()) {
             // 世界可能已被外部插件重新加载：先观察一次再推进快照
             World observed = refresh();
             if (observed != null && observed.getGenerator() instanceof PlanetChunkGenerator fromWorld) {
-                this.generator = fromWorld;
-                current = fromWorld;
+                generators.add(fromWorld);
             }
         }
-        if (current != null) {
-            current.setRegistry(registry);
-            current.setFloorY(plugin.settings().planetFloorY());
+        for (PlanetChunkGenerator each : generators) {
+            each.setRegistry(registry);
+            each.setFloorY(plugin.settings().planetFloorY());
         }
     }
 
@@ -248,12 +261,13 @@ public final class CosmosWorldService {
         }
 
         Location spawn = settings.fallbackLocation(plugin.getServer());
-        if (spawn == null || spawn.getWorld() == null
-                || !spawn.getWorld().getName().equals(world.getName())) {
-            // 没有配置（或配置指向别的世界）时保留生成器/原版决定的出生点
+        if (spawn != null && spawn.getWorld() != null
+                && spawn.getWorld().getName().equals(world.getName())
+                && shouldApplySpawn(world)) {
+            world.setSpawnLocation(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ(), spawn.getYaw());
+        } else {
             spawn = world.getSpawnLocation();
         }
-        world.setSpawnLocation(spawn.getBlockX(), spawn.getBlockY(), spawn.getBlockZ(), spawn.getYaw());
 
         applyViewDistance(world, settings);
 
@@ -264,6 +278,25 @@ public final class CosmosWorldService {
                     + spawn.getBlockX() + ", " + spawn.getBlockY() + ", "
                     + spawn.getBlockZ() + ")");
         }
+    }
+
+    /**
+     * 出生点只在「本进程第一次接管这个世界」且「出生点仍在默认的 (0, y, 0)」时按
+     * {@code fallback-location} 设置；之后 {@code /cosmos reload} 不再覆盖管理员用
+     * {@code /setworldspawn} 改过的出生点。
+     */
+    private boolean shouldApplySpawn(World world) {
+        if (!spawnApplied.add(world.getName())) {
+            return false;
+        }
+        Location current = world.getSpawnLocation();
+        if (current.getBlockX() != 0 || current.getBlockZ() != 0) {
+            plugin.getLogger().info("世界 '" + world.getName() + "' 的出生点已被手动设置（"
+                    + current.getBlockX() + ", " + current.getBlockY() + ", " + current.getBlockZ()
+                    + "），保留它，不再套用 fallback-location。");
+            return false;
+        }
+        return true;
     }
 
     /**

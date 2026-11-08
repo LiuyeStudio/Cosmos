@@ -192,6 +192,18 @@ public class ProceduralPlanetFieldTest {
     }
 
     @Test
+    public void spawnPlanetCenterYIsClampedIntoTheWorldRange() {
+        // 配置的 400 超出世界顶层 255：球心必须被夹到 255 - 42 = 213，整颗球才留在世界里
+        Planet spawn = new ProceduralPlanetField(spawnSettings(0.0D, 42.0D, 400))
+                .planetFor(0, 0, 0, 255);
+
+        assertNotNull(spawn);
+        assertEquals(213.0D, spawn.centerY(), 1.0E-9D);
+        assertTrue(spawn.minBlockY() >= 0);
+        assertTrue(spawn.maxBlockY() <= 255);
+    }
+
+    @Test
     public void spawnPlanetCanBeDisabled() {
         ProceduralPlanetField field = new ProceduralPlanetField(settings(0.0D, 6.0D, 20.0D, 0, 255));
 

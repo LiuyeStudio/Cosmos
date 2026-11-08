@@ -6,11 +6,33 @@
 
     <groupId>studio.liuye</groupId>
     <artifactId>cosmos</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1</version>
     <packaging>jar</packaging>
 
     <name>Cosmos</name>
     <description>Cosmos dimension with deterministic planet world generation, Y-axis travel and floating items. Paper + Folia.</description>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>liuye</id>
+            <name>LiuyeStudio</name>
+            <url>https://github.com/LiuyeStudio</url>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://github.com/LiuyeStudio/Cosmos.git</connection>
+        <developerConnection>scm:git:ssh://git@github.com/LiuyeStudio/Cosmos.git</developerConnection>
+        <url>https://github.com/LiuyeStudio/Cosmos</url>
+    </scm>
 
     <properties>
         <!-- Target runtime: Java 21 -->

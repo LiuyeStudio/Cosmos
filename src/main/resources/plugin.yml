@@ -7,6 +7,10 @@ name: Cosmos
 version: '${project.version}'
 main: studio.liuye.cosmos.CosmosPlugin
 
+# Early load: getDefaultWorldGenerator() runs before onEnable, and the generator needs
+# the parsed configuration. Without STARTUP the data folder is not ready at that point.
+load: STARTUP
+
 # Folia 26.3 reports "26.3" as its current API version (apiVersioning.json).
 api-version: '26.3'
 
@@ -20,7 +24,7 @@ softdepend: [ Multiverse-Core, MyWorlds, PhantomWorlds ]
 
 description: Cosmos dimension - deterministic planet world generation, Y-axis travel between the overworld and the Cosmos dimension, floating items.
 authors: [ liuye ]
-website: https://studio.liuye
+website: https://github.com/LiuyeStudio/Cosmos
 
 commands:
   cosmos:
@@ -30,9 +34,13 @@ commands:
       /cosmos tp <player>         - teleport a player to the Cosmos dimension
       /cosmos info                - show scale, thresholds and world status
     aliases: [ cos ]
+    permission: cosmos.use
     permission-message: You do not have permission to use /cosmos.
 
 permissions:
+  cosmos.use:
+    description: Allows using the base /cosmos command (sub-commands check their own permissions).
+    default: true
   cosmos.admin:
     description: Full Cosmos administration permission.
     default: op

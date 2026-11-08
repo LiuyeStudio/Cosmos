@@ -131,7 +131,10 @@ public final class ProceduralPlanetField {
         ProceduralPlanetSettings.PaletteEntry entry = palette.get(paletteIndex);
 
         double shell = lerp(settings.minShellThickness(), settings.maxShellThickness(), unit(hash, 5));
-        double centerY = spawn ? settings.spawnCenterY() : chooseCenterY(hash, radius, minY, maxY);
+        // 地标球心也要夹：否则 spawn-center-y 配得比世界还高时，整颗地标会被画到世界外、静默消失
+        double centerY = spawn
+                ? clampCenterY(settings.spawnCenterY(), radius, minY, maxY)
+                : chooseCenterY(hash, radius, minY, maxY);
 
         PlanetSettings planetSettings = new PlanetSettings(
                 spawn ? "spawn" : "proc-" + cellX + "-" + cellZ,
@@ -146,6 +149,16 @@ public final class ProceduralPlanetField {
                 entry.coreBlock(),
                 settings.weight());
         return new Planet(planetSettings);
+    }
+
+    /** 把固定的球心 Y 夹进 {@code [minY + radius, maxY - radius]}；放不下时退回可区间的中点。 */
+    static double clampCenterY(double centerY, double radius, int minY, int maxY) {
+        double low = minY + radius;
+        double high = maxY - radius;
+        if (low > high) {
+            return (minY + maxY) / 2.0D;
+        }
+        return Math.max(low, Math.min(high, centerY));
     }
 
     /**

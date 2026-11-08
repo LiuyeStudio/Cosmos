@@ -127,6 +127,10 @@ public final class ItemFloatService {
     private void sweepNear(Player player) {
         CosmosSettings settings = plugin.settings();
         double radius = settings.floatSweepRadius();
+        if (radius <= 0.0D) {
+            // 0 = 关闭「按玩家位置重新扫描」；掉落物的持续悬浮仍由每个掉落物自己的任务维持
+            return;
+        }
         try {
             for (Entity entity : player.getNearbyEntities(radius, radius, radius)) {
                 if (entity.equals(player)) {

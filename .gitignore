@@ -2,3 +2,9 @@ target/
 _ref/
 .idea/
 *.iml
+
+# 构建产物与本地产物
+*.jar
+*.class
+*.log
+.run/

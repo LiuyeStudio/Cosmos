@@ -44,6 +44,7 @@ public final class MessageService {
             Map.entry("reload-success", "&a配置已重载并生效：缩放 1:{scale}。"),
             Map.entry("reload-success-no-world", "&e配置已重载，但 Cosmos 世界不可用（详见控制台）。"),
             Map.entry("reload-failed", "&c重载失败: &f{reason}"),
+            Map.entry("info-unavailable", "&c配置尚未加载完成，请稍后再试。"),
             Map.entry("info-header", "&b===== Cosmos 状态 ====="),
             Map.entry("info-runtime", "&7运行环境: &f{servers} &7(Folia={folia})"),
             Map.entry("info-scale", "&7缩放: &f1 : {scale} &7(Cosmos 1 格 = 主世界 {scale} 格)"),
