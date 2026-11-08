@@ -354,6 +354,8 @@ mvn -o clean package
 # 产物：target/Cosmos-1.1.0.jar
 ```
 
+`paper-api` 26.3 以 Java 25 字节码发布，因此编译需要 **JDK 25 或更高**（插件产物本身仍指向 Java 21，由 `maven.compiler.release` 控制）。仓库自带的 GitHub Actions 因此固定使用 Temurin 25。
+
 ### 12.2 单元测试
 
 ```bash

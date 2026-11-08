@@ -354,6 +354,8 @@ mvn -o clean package
 # Output: target/Cosmos-1.1.0.jar
 ```
 
+`paper-api` 26.3 is published as Java 25 bytecode, so the build needs **JDK 25 or newer** even though the plugin itself still targets Java 21 (`maven.compiler.release`). The bundled GitHub Actions workflow pins Temurin 25 for this reason.
+
 ### 12.2 Unit tests
 
 ```bash
