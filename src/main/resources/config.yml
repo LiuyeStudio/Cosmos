@@ -119,6 +119,11 @@ float-unlimited-lifetime: false
 # 已存在掉落物的巡检周期（tick，0 = 关闭）。Folia 下按玩家区域扫描，范围见下。
 float-sweep-interval-ticks: 200
 float-sweep-radius: 16
+# 重力方块（沙子 / 沙砾 / 混凝土粉末 / 铁砧 / 滴水石锥）是否在 Cosmos 中悬停。
+#   运作方式：它们开始下落时会被替换成掉落实体，这里取消该实体并把方块放回原处，
+#   所以在 Cosmos 里挖掉沙子下面的方块、或者在空中放沙子，方块都会停在原地。
+#   只影响 Cosmos，主世界照常下落。
+float-gravity-blocks: true
 
 # ----------------------------------------------------------------------------
 # 玩家悬浮 / player float

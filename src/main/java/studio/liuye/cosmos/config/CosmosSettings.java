@@ -53,6 +53,7 @@ public final class CosmosSettings {
     private final boolean floatExperienceOrb;
     private final boolean floatFreezeVelocity;
     private final boolean floatUnlimitedLifetime;
+    private final boolean floatGravityBlocks;
     private final int floatSweepIntervalTicks;
     private final double floatSweepRadius;
     private final boolean playerFloatEnabled;
@@ -88,6 +89,7 @@ public final class CosmosSettings {
         this.floatExperienceOrb = builder.floatExperienceOrb;
         this.floatFreezeVelocity = builder.floatFreezeVelocity;
         this.floatUnlimitedLifetime = builder.floatUnlimitedLifetime;
+        this.floatGravityBlocks = builder.floatGravityBlocks;
         this.floatSweepIntervalTicks = builder.floatSweepIntervalTicks;
         this.floatSweepRadius = builder.floatSweepRadius;
         this.playerFloatEnabled = builder.playerFloatEnabled;
@@ -280,6 +282,11 @@ public final class CosmosSettings {
         return floatUnlimitedLifetime;
     }
 
+    /** 沙子 / 沙砾 / 混凝土粉末 / 铁砧等重力方块在 Cosmos 中不再下落。 */
+    public boolean floatGravityBlocks() {
+        return floatGravityBlocks;
+    }
+
     public int floatSweepIntervalTicks() {
         return floatSweepIntervalTicks;
     }
@@ -357,6 +364,7 @@ public final class CosmosSettings {
         private boolean floatExperienceOrb = false;
         private boolean floatFreezeVelocity = true;
         private boolean floatUnlimitedLifetime = false;
+        private boolean floatGravityBlocks = true;
         private int floatSweepIntervalTicks = 200;
         private double floatSweepRadius = 16.0D;
         private boolean playerFloatEnabled = true;
@@ -474,6 +482,11 @@ public final class CosmosSettings {
 
         public Builder floatUnlimitedLifetime(boolean value) {
             this.floatUnlimitedLifetime = value;
+            return this;
+        }
+
+        public Builder floatGravityBlocks(boolean value) {
+            this.floatGravityBlocks = value;
             return this;
         }
 

@@ -229,6 +229,7 @@ public final class SettingsLoader {
         builder.floatExperienceOrb(config.getBoolean("float-experience-orb", false));
         builder.floatFreezeVelocity(config.getBoolean("float-freeze-velocity", true));
         builder.floatUnlimitedLifetime(config.getBoolean("float-unlimited-lifetime", false));
+        builder.floatGravityBlocks(config.getBoolean("float-gravity-blocks", true));
         builder.floatSweepIntervalTicks(Math.max(0, config.getInt("float-sweep-interval-ticks", 200)));
         // 0 = 关闭「按玩家位置重新扫描」（掉落物自己的悬浮任务不受影响）
         builder.floatSweepRadius(Math.max(0.0D, config.getDouble("float-sweep-radius", 16.0D)));

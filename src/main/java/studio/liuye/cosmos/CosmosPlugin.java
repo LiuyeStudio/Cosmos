@@ -15,6 +15,7 @@ import studio.liuye.cosmos.config.CosmosSettings;
 import studio.liuye.cosmos.config.ProceduralPlanetSettings;
 import studio.liuye.cosmos.config.SettingsLoader;
 import studio.liuye.cosmos.item.ItemFloatService;
+import studio.liuye.cosmos.listener.GravityBlockListener;
 import studio.liuye.cosmos.listener.ItemFloatListener;
 import studio.liuye.cosmos.listener.MovementListener;
 import studio.liuye.cosmos.listener.PlayerLifecycleListener;
@@ -464,6 +465,7 @@ public final class CosmosPlugin extends JavaPlugin {
     private void registerListeners() {
         getServer().getPluginManager().registerEvents(new MovementListener(teleports), this);
         getServer().getPluginManager().registerEvents(new ItemFloatListener(itemFloatService), this);
+        getServer().getPluginManager().registerEvents(new GravityBlockListener(this), this);
         getServer().getPluginManager().registerEvents(new WorldBorderSyncListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerLifecycleListener(teleports, itemFloatService, playerFloatService), this);
     }

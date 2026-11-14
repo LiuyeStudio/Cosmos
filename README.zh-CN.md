@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-> **1.1.1** · Paper 26.3 / Folia 26.3
+> **1.2.0** · Paper 26.3 / Folia 26.3
 
 Cosmos 在你的世界正上方多开了一个维度：一直往上飞，你会穿过边界进入一片寂静星空，那里每一颗星球都由坐标哈希生成；向下坠落，你又会回到出发的地方。
 
@@ -15,6 +15,7 @@ Cosmos 在你的世界正上方多开了一个维度：一直往上飞，你会�
 | **缩放但方位不变** | 两个世界共享同一张平面地图，比例 1:64 —— 主世界 `x = 1600` 对应 Cosmos `x = 25`，你永远能算回自己的位置。 |
 | **低重力，优先照顾鞘翅** | 下坠被放慢成缓慢漂浮；穿鞘翅的玩家会被完全跳过，滑翔手感和原版一致。 |
 | **掉落物悬浮** | 丢出的物品停在太空里，不会无限下坠（可选同时冻结经验球）。 |
+| **重力方块悬停** | 沙子、沙砾、混凝土粉末、铁砧在 Cosmos 里停在原地：挖掉它们下面的方块、或者在半空直接放，都不会塌下来。 |
 | **落地就有地标** | 落点正上方固定有一颗星球，踏进虚空也不会眼前一空。 |
 | **支持 Folia** | Paper 和 Folia 都能跑，运行时自动识别。 |
 
@@ -25,7 +26,7 @@ Cosmos 在你的世界正上方多开了一个维度：一直往上飞，你会�
 
 ## 安装
 
-1. 把 `Cosmos-1.1.1.jar` 放进 `plugins/`。
+1. 把 `Cosmos-1.2.0.jar` 放进 `plugins/`。
 2. 启动服务端。
 3. 就这样 —— `cosmos` 世界会在第一次有人前往时自动创建，也可以执行 `/cosmos reload` 立即创建。
 
@@ -84,6 +85,7 @@ Cosmos 在你的世界正上方多开了一个维度：一直往上飞，你会�
 | `float-unlimited-lifetime` | `false` | 悬浮物品永久保留。 |
 | `float-sweep-interval-ticks` | `200` | 重新检查玩家周围区域的频率。 |
 | `float-sweep-radius` | `16` | 重新检查的半径 —— 范围内的掉落物会被重新设为悬浮。 |
+| `float-gravity-blocks` | `true` | 沙子、沙砾、混凝土粉末、铁砧等重力方块在 Cosmos 中停在原地。 |
 | `player-float-enabled` | `true` | 放慢 Cosmos 中的下坠。 |
 | `player-float-fall-speed` | `0.08` | 下坠时允许的最大速度（格/刻）。 |
 | `player-float-interval-ticks` | `2` | 施加该速度限制的频率。 |
@@ -135,6 +137,7 @@ Cosmos 在你的世界正上方多开了一个维度：一直往上飞，你会�
 | 鞘翅在 Cosmos 里不好用 | 确认 `player-float-skip-elytra` 是 `true`（默认值）。 |
 | 进出 Cosmos 时客户端卡住 | 把 `cosmos-send-view-distance` 调到 `6`，`teleport-preload-radius` 调到 `0`。 |
 | 旧的 `planets:` 列表没生效 | 正常 —— 手写星球已被程序化生成取代，删掉该段即可。 |
+| 沙子 / 沙砾还是会掉下来 | 确认 `float-gravity-blocks` 是 `true`，并且人在 Cosmos 维度里；只在该维度生效。 |
 | 改了配置没变化 | 执行 `/cosmos reload`；改 `cosmos-world-name`、环境或种子需要新建世界。 |
 
 ## 已知限制

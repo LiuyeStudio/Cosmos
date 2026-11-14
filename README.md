@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-> **1.1.1** · Paper 26.3 / Folia 26.3
+> **1.2.0** · Paper 26.3 / Folia 26.3
 
 Cosmos adds a second dimension above your world: keep flying up and you break through into a silent starfield where every planet is generated from a coordinate hash. Fall back down and you return to the same spot you left from.
 
@@ -15,6 +15,7 @@ Cosmos adds a second dimension above your world: keep flying up and you break th
 | **Scale that keeps you oriented** | The two worlds share one horizontal map at 1:64 — `x = 1600` in the overworld is `x = 25` in Cosmos. Your position always maps back. |
 | **Low gravity, elytra-first** | Falling is slowed to a gentle drift, and anyone wearing an elytra is left completely alone so gliding feels vanilla. |
 | **Floating items** | Dropped items hang in space instead of dropping forever (experience orbs optional). |
+| **Gravity blocks stay put** | Sand, gravel, concrete powder and anvils hang where they are — dig out the block underneath, or place one mid-air, and it stays. |
 | **A landmark to land under** | A guaranteed planet sits right above the arrival point, so stepping into the void is never a dead end. |
 | **Folia ready** | Runs on both Paper and Folia, detected at runtime. |
 
@@ -25,7 +26,7 @@ Cosmos adds a second dimension above your world: keep flying up and you break th
 
 ## Install
 
-1. Drop `Cosmos-1.1.1.jar` into `plugins/`.
+1. Drop `Cosmos-1.2.0.jar` into `plugins/`.
 2. Start the server.
 3. That's it — the `cosmos` world is created the first time someone travels there, or immediately with `/cosmos reload`.
 
@@ -84,6 +85,7 @@ Three files, all in `plugins/Cosmos/`: `config.yml` (travel, world, floating), `
 | `float-unlimited-lifetime` | `false` | Keep floating items forever. |
 | `float-sweep-interval-ticks` | `200` | How often the area around each player is re-checked. |
 | `float-sweep-radius` | `16` | Radius of that re-check — dropped items inside it are re-applied the floating state. |
+| `float-gravity-blocks` | `true` | Sand, gravel, concrete powder and anvils stay where they are in Cosmos. |
 | `player-float-enabled` | `true` | Slow down falling in Cosmos. |
 | `player-float-fall-speed` | `0.08` | Maximum downward speed while falling, in blocks per tick. |
 | `player-float-interval-ticks` | `2` | How often that speed limit is applied. |
@@ -135,6 +137,7 @@ Quick tuning:
 | Elytra barely works in Cosmos | Make sure `player-float-skip-elytra` is `true` (the default). |
 | Client freezes when entering or leaving | Lower `cosmos-send-view-distance` to `6`, and `teleport-preload-radius` to `0`. |
 | My old `planets:` list is ignored | Correct — hand-written planets were replaced by the procedural field. Delete the section. |
+| Sand or gravel still falls | Make sure `float-gravity-blocks` is `true` and that you are actually in the Cosmos world — the rule only applies there. |
 | Config edits do nothing | Run `/cosmos reload`; changing `cosmos-world-name`, environment or seed requires a new world. |
 
 ## Known limitations
